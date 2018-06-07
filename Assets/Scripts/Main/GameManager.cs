@@ -10,123 +10,87 @@ namespace MainInGame
         public Grid grd;
 
         public int countPlayers;        // Количество всех игроков в катке. И боты и игроки локалки и мультиплееры, все. 2 или 3
-        public int countRealPlayers;    // Количество живых игроков в игре. Локалка или мультиплеер
-        public int countBots;       // Без комментариев.
+        public int countInterPlayers;   // Количество интернет игроков в игре
+        public int countBots;           // Без комментариев.
+        public int CountRealPlayers {get{ return countPlayers - countInterPlayers - countBots; } }
 
-        public Player[] players;     // массив всех игроков
-
-        public BotController[] bcs;     // массив ботов
-        public InternetPlayer[] ips;     // массив интернет игроков
-
-        // Порядок ходов. На i позиции надится тот кто должен ходить iым, если это бот - указатель на InternetPlayer == null, и наоборот.
-        public Typple2<BotController,InternetPlayer>[] orderHits;
-
-        public int modeGame;    // Основной режим игры:   0 - против ботов (все боты)   1 - локалка(м.б.+бот)   2 - интернет(м.б.+бот)
+        public Player[] players;         // массив всех игроков с порядком кто каким ходит
 
         public int playerCurHit;    // 0 1 2
 
+        /*
+            0 - вероятность появления
+            1 - вероятность появления умноющего/делящего здоровья/урона
+        */
+        public List<float> likenessBomb;
+        public List<float> likenessHill;
+        /*
+            0,1 - диаппазон урона/здоровья для прибавления/вычитания
+            2,3 - диаппазон урона/здоровья для умножения/деления - проценты
+        */
+        public List<int> bombDiappason;
+        public List<int> hillDiappason;
 
-        // вероятность появления бомбы в ячейке [0;1]
-        public float likenessBomb;
-        // вероятность бомбы вычитающей здоровье, а не отнимающей в процентах [0;1]
-        public float likenessDamageDecrement;
-        // вероятность появления аптечки в ячейке [0;1]
-        public float likenessHill;
+        // стартовое количество здоровья
+        public int startHill;
 
 
 
         // Use this for initialization
-        void Start () {
-            BotController.gm = this;
+        void Start ()
+        {
             OneHit.gm = this;
-            BoCoCell.gm = this;
-            BoCoCell.bcs = bcs;
+            Player.gm = this;
 
-            modeGame = LocalDB._def_ModeGame;
+            countInterPlayers = LocalDB._def_CountInterPlayers;
+            countBots = LocalDB._def_CountBots;
             countPlayers = LocalDB._def_CountPlayers;
-
-            orderHits = new Typple2<BotController, InternetPlayer>[countPlayers];
-
-            playerCurHit = 0;
 
             players = new Player[countPlayers];
 
-            if ( modeGame==0 )
-            {   // гарантированно 1 игрок, и либо 2 либо 3 бота
-                countRealPlayers = 1;
-                countBots = countPlayers - 1;
+            playerCurHit = 0;
 
-                bcs = new BotController[countBots];
-                ips = null;
-
-                for(int i=0,j=0; i<countPlayers; i++)
-                {
-                    // номер цвета соответствует номеру хода по порядку
-                    // i+1 потому что цвет: 1 2 3, а i: 0 1 2
-                    if( LocalDB._def_ColorPlayer1 != i+1 ) { 
-                        bcs[j] = new BotController( i+1 );
-                        orderHits[i] = new Typple2<BotController, InternetPlayer>(bcs[j],null);
-                        j++;
-                    }
-                    else 
-                        orderHits[i] = new Typple2<BotController, InternetPlayer>(null,null);
-                }
-            }
-            else if( modeGame==1 )
+            // я, друг и бот на телефоне - обоим с локали надо назначить цвета
+            if ( countPlayers==3 && CountRealPlayers==2 )
             {
-                if( countPlayers == 2 )
-                {
-                    countRealPlayers = 2;
-                    countBots = 0;
-
-                    bcs = null;
-                }
-                else // countPlayers==3
-                {
-                    countRealPlayers = LocalDB._def_CountRealPlayers;
-                    countBots = countPlayers - countRealPlayers;
-
-                    bcs = (countBots > 0) ? new BotController[countBots] : null;
-                
-                    // a,b:6-a-b   1,2:3   1,3:2   2,3:1     Эта штука нужна для определения хода бота, либо оставшегося игрока
-                    int lastPlayer = 6-LocalDB._def_ColorPlayer1-LocalDB._def_ColorPlayer2;
-                    if( countBots == 1 ) { 
-                        bcs[0] = new BotController(lastPlayer);
-                        orderHits[lastPlayer-1] = new Typple2<BotController, InternetPlayer>( bcs[0], null );
-                    }
-                    else
-                        orderHits[lastPlayer-1] = new Typple2<BotController, InternetPlayer>( null, null );
-                }
-                ips = null;
-
-                // -1 потому что синему должен соответствовать 1 элемент а красному 2, в реальности элементы массива отсчитываются с 0
-                orderHits[LocalDB._def_ColorPlayer1-1] = new Typple2<BotController, InternetPlayer>(null, null);
-                orderHits[LocalDB._def_ColorPlayer2-1] = new Typple2<BotController, InternetPlayer>(null, null);
+                // 1,2:3  1,3:2  2,3:1
+                players[LocalDB._def_ColorPlayer1] = new Player(LocalDB._def_ColorPlayer1);
+                players[LocalDB._def_ColorPlayer2] = new Player(LocalDB._def_ColorPlayer2);
+                int botId = 6 - LocalDB._def_ColorPlayer1 - LocalDB._def_ColorPlayer2;
+                players[botId] = new Bot(botId);
             }
-            else // gameType==2
-            {/*
-                if (countPlayers == 2)
-                {
-                    countRealPlayers = 2;
-                    countBots = 0;
+            // если есть боты или интернет игроки создаём для них классы, для локального игрока,
+            // он единственный, тоже создаём класс
+            else if ( countBots>0 && countInterPlayers>0 )
+            {
+                players[LocalDB._def_ColorPlayer1] = new Player(LocalDB._def_ColorPlayer1);
 
-                    bcs = null;
-                    ips = new InternetPlayer[1];
+                /*
+                for(int i=0; i<countBots; i++)
+                {
+                    // потом код допишу
+                    players[i] = new Bot();
                 }
-                else // countPlayers==3
-                {
-                    countRealPlayers = LocalDB._def_CountRealPlayers;
-                    countBots = countPlayers - countRealPlayers;
 
-                    bcs = (countBots>0) ? new BotController[countBots] : null;
-                    ips = new InternetPlayer[countRealPlayers-1];
-                }*/
+                for(int i=0; i<countInterPlayers; i++)
+                {
+                    // потом код допишу
+                    players[i] = new InterPlayer();
+                }
+
+                */
             }
-            
-            BoCoCell.bcs = bcs;
+            else // все на локале
+            {
+                for (int i = 0; i<CountRealPlayers; i++)
+                {
+                    players[i] = new Player(i);
+                }
+            }
 
             // теперь инициализируем всё что в grid зависит от GameManager
-            grd.Initialize();
+            //grd.Initialize(); помни об особенностях юнити
+            SpawnPlayers();
 
             GetHit();
 
@@ -137,6 +101,41 @@ namespace MainInGame
 	    void Update () {
             OnUpdate();
 	    }
+
+
+
+        
+
+
+
+        // открывает поле при клике в данную точку
+        public void SpawnPlayers()
+        {
+            if ( countPlayers == 1 )
+            {
+                players[0].p = grd.FindPoint(new Point(0, 0));
+            }
+            if ( countPlayers == 2 )
+            {
+                players[0].p = grd.FindPoint(new Point(1, -1));
+                players[1].p = grd.FindPoint(new Point(-1, 1));
+            }
+            if ( countPlayers == 3 )
+            {
+                players[0].p = grd.FindPoint(new Point(0, -1));
+                players[1].p = grd.FindPoint(new Point(-1, 1));
+                players[2].p = grd.FindPoint(new Point(1, 0));
+            }
+
+            for(int i=0; i< countPlayers; i++)
+            {
+                players[i].p.SetState(i+3);
+                players[i].p.whoShodil = i+1;
+            }
+        }
+
+
+
 
 
 
@@ -164,8 +163,7 @@ namespace MainInGame
         // Для ботов и мультиплеерных игроков
         public void GetHit()
         {
-            return;
-            if( orderHits[playerCurHit].x1==null && orderHits[playerCurHit].x2 == null )
+            /*if( orderHits[playerCurHit].x1==null && orderHits[playerCurHit].x2 == null )
                 return;     // Долен ходить локальный игрок
 
             OneHit p;
@@ -184,22 +182,22 @@ namespace MainInGame
             }
             
 
-            GetHit();
-        }
-
-
-        // принимает значения damageHill и damageDecrement из OneHit, обрабатывает их, вычитает игроку здоровье
-        private void UpdateHillDamage( int damage, bool damageDecrement=true )
-        {
-
+            GetHit();*/
         }
 
         public void UpdateAllAfterHit( OneHit p )
         {
-            // Боты перерасчитывают свои веса
-            for(int i=0; i<countBots; i++)
+            // меняем позицию игрока
+            players[playerCurHit].p.SetState(2);
+            players[playerCurHit].p = p;
+            players[playerCurHit].p.SetState(playerCurHit+3);
+
+
+            for (int i=0; i<countPlayers; i++)
             {
-                bcs[i].ReanalyseAfterHit(p);
+                // Боты перерасчитывают свои веса
+                if( players[i].GetType() == typeof(Bot) )
+                    ((Bot)players[i]).ReanalyseAfterHit(p);
             }
 
             // Определяем кто ходит
@@ -214,6 +212,47 @@ namespace MainInGame
         {
             return grd.MakeHit( point, player );
         }
+
+
+
+        
+
+
+
+        // принимает значения damageHill и damageDecrement из OneHit, обрабатывает их, вычитает игроку здоровье
+        public void UpdateDamage()
+        {
+            // Если условие выполнится - бомба делящая здоровье, иначе - вычитающая
+            if ( Random.value > likenessBomb[1] )
+            {
+                int damage = (int) (Random.value * (bombDiappason[1] - bombDiappason[0]) + bombDiappason[0]+0.5);
+                players[playerCurHit].SubDamage( damage );
+            }
+            else
+            {
+                float damage = (Random.value * (bombDiappason[3] - bombDiappason[2]) + bombDiappason[2])/100f;
+                players[playerCurHit].DeviDamage( damage );
+            }
+            players[playerCurHit].CountBombsIncrement();
+        }
+
+        public void UpdateHill()
+        {
+            // Если условие выполнится - бомба делящая здоровье, иначе - вычитающая
+            if ( Random.value > likenessHill[1] )
+            {
+                int hill = (int) ( Random.value * (hillDiappason[1] - hillDiappason[0]) + hillDiappason[0]+0.5);
+                players[playerCurHit].AddHill( hill );
+            }
+            else
+            {
+                float hill = (Random.value * (hillDiappason[3] - hillDiappason[2]) + hillDiappason[2])/100f;
+                players[playerCurHit].MultHill( hill );
+            }
+
+        }
+
+
 
 
 

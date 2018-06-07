@@ -22,8 +22,6 @@ namespace MainInGame
         public List<Sprite> cellsPrefabs;
         public List<Sprite> cellTypesPrefabs;
 
-        public GameObject[] lastHitedPoint;
-
         // Эталон ячеек
         public GameObject mainCell;
         
@@ -34,7 +32,7 @@ namespace MainInGame
             int orientation = LocalDB._def_GexagonsOrientation;
             // если ориентация камеры вертикальная - поворачиваем текст в ячейке на 30 градусов
             if (orientation == 1)
-                mainCell.GetComponent<OneHit>().fieldCountBombs.transform.parent.Rotate(Vector3.forward, 30);
+                mainCell.GetComponent<OneHit>().GetCanvas().Rotate(Vector3.forward, 30);
 
             OneHit.grd = this;
             BoCoCell.grd = this;
@@ -53,12 +51,6 @@ namespace MainInGame
             // открываем ячейки
 
             OnStart();
-        }
-        // продолжение старта, только запускается параллельно ему сразу после запуска GameManager.start
-        public void Initialize()
-        {
-            // появляются игроки
-            SpawnPlayers();
         }
 
         private void Update()
@@ -86,84 +78,41 @@ namespace MainInGame
                 if (i == 6)
                     return false;
             }
-            
-            // если в ячейке бомба - рисуем бомбу
-            if (point.damageHill == 2)
-            {
-                point.fieldBomb.SetActive(true);
-            }
 
-            // если в ячейке аптечка - рисуем её
-            else if (point.damageHill == 1)
-            {
-                point.fieldHill.SetActive(true);
-            }
-
-            // ходим
+            int res = point.MakeHit( player );
+            if ( res == 1 )
+                gm.UpdateHill();
+            else if ( res == 2 )
+                gm.UpdateDamage();
 
             // создать чёрное поле
             AddBlackField(point.coord);
 
-            // смотрим какие ячейки теперь свободны
-            OpenField(point);
-
-            // Обновляем точку
-            lastHitedPoint[player - 1].GetComponent<OneHit>().SetState(2);
-            point.SetState(player + 2);
-
-            point.whoShodil = player;
-            lastHitedPoint[player - 1] = point.gameObject;
+            // открываем ячейки, добавляем их количество к текущему юзеру
+            gm.players[player-1].CountOpenCellsAdd( OpenField(point) ); 
 
             return true;
         }
 
         // открывает поле при клике в данную точку
-        public void OpenField(OneHit p)
+        public int OpenField(OneHit p)
         {
             // если ячейки не существует, если она уже открыта или если закрыта
-            if (p == null || p.damageHill==2 || p.state==2 || p.state==0)
-                return;
+            // если точка была помечена как бомба - убираем пометку
+            if (p == null || p.damageHill==2 || p.state==2 || p.state==0 || p.playerMarkBomb==1 )
+                return 0;
 
             p.SetState(2);
 
-            // если вокруг есть бомбы рисуем в ячейке текст
-            if( p.countBombs > 0 )
-            {
-                p.fieldCountBombs.text = p.countBombs.ToString();
-                return;
-            }
+            // если вокруг есть бомбы обход в дальнейшие ячейки завершаем
+            if( p.PointVisible() )
+                return 1;
 
+            int ret = 0;
             for (int i = 0; i < 6; i++)
-                OpenField( FindPoint( p.coord.GetAround(i) ) );
-        }
+                ret += OpenField( FindPoint( p.coord.GetAround(i) ) );
 
-        // открывает поле при клике в данную точку
-        public void SpawnPlayers()
-        {
-            lastHitedPoint = new GameObject[gm.countPlayers];
-
-            if ( gm.countPlayers == 1 )
-            {
-                lastHitedPoint[0] = FindPoint(new Point(0, 0)).gameObject;
-            }
-            if ( gm.countPlayers == 2 )
-            {
-                lastHitedPoint[0] = FindPoint(new Point(1, -1)).gameObject;
-                lastHitedPoint[1] = FindPoint(new Point(-1, 1)).gameObject;
-            }
-            if ( gm.countPlayers == 3 )
-            {
-                lastHitedPoint[0] = FindPoint(new Point(0, -1)).gameObject;
-                lastHitedPoint[1] = FindPoint(new Point(-1, 1)).gameObject;
-                lastHitedPoint[2] = FindPoint(new Point(1, 0)).gameObject;
-            }
-
-            for(int i=0; i< gm.countPlayers; i++)
-            {
-                OneHit p = lastHitedPoint[i].GetComponent<OneHit>();
-                p.SetState(i+3);
-                p.whoShodil = i+1;
-            }
+            return ret;
         }
 
 
@@ -222,7 +171,7 @@ namespace MainInGame
                 }
 
                 float rnd = UnityEngine.Random.value;
-                if (rnd < gm.likenessBomb)
+                if (rnd < gm.likenessBomb[0])
                 {   // выпала бомба
                     oh.CreateBomb();
 
@@ -237,35 +186,13 @@ namespace MainInGame
                 }
 
                 rnd = UnityEngine.Random.value;
-                if (rnd < gm.likenessHill)
+                if (rnd < gm.likenessHill[0])
                 {   // выпала аптечка
                     oh.CreateHill();
                     continue;
                 }
 
                 //oh.damageHill = 0;
-            }
-        }
-
-
-
-
-        public void MarkBomb(OneHit point)
-        {
-            if ( point.state != 1 )
-                return;
-
-            Handheld.Vibrate();
-
-            if ( point.playerMarkBomb == 0 )
-            {
-                point.playerMarkBomb = gm.playerCurHit + 1;
-                point.fieldBomb.SetActive(true);
-            }
-            else
-            {
-                point.playerMarkBomb = 0;
-                point.fieldBomb.SetActive(false);
             }
         }
 

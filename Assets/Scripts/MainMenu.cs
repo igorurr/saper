@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 [System.Serializable]
 public class ModeGame
@@ -13,26 +14,26 @@ public class ModeGame
     public int countPlayers;
     // количество ботов
     public int countBots;
-    // false-локальная игра true-интернет
-    public bool gameInternet;
+    // количество инет игроков
+    public int countInterPlayers;
 
     /*
-        одиночка                1 0 false
-        вдвоём на телефоне      2 0 false
-        вдвоём по сети          2 0 true
-        вдвоём с ботом          2 1 false
-        втроём на телефоне      3 0 false
-        втроём по сети          3 0 true ( динамический режим, может быть бот а может и не быть )
-        я, друг и бот на телефоне    3 1 false
-        я с ботами              3 2 false
+        одиночка                    1 0 0
+        вдвоём на телефоне          2 0 0
+        вдвоём по сети              2 0 1   ВыборЦвета1
+        вдвоём с ботом              2 1 0   ВЦ1
+        втроём на телефоне          3 0 0
+        втроём по сети              3 - -   ВЦ1
+        я, друг и бот на телефоне   3 1 0   ВЦ2
+        я с ботами                  3 2 0   ВЦ1
     */
 
-    public ModeGame(string nm, int cp, int cb, bool gi)
+    public ModeGame(string nm, int cp, int cb, int gi)
     {
         nameMode = nm;
         countPlayers = cp;
         countBots = cb;
-        gameInternet = gi;
+        countInterPlayers = gi;
     }
 }
 
@@ -48,8 +49,7 @@ public class MainMenu : MonoBehaviour {
 
     public Text fieldCountPlayers;
     public GameObject fieldOrientation;    // ориентация шестиугольников на сетке. Реализуется поворотом камеры на 30 градусов. 0-горизонтальная 1-вертикальная
-    public Text fieldGameWin;       // Игра на победу или на поражение. Где показывать текст игра на победу или поражение
-
+    
     public int modeGame;
     public Text fieldModeGame;       // режим игры   0 - бот   1 - игрок против игрока на этом устройстве   2 - мультиплеер
 
@@ -78,8 +78,7 @@ public class MainMenu : MonoBehaviour {
             if (
                 mods[curMode].countPlayers == LocalDB._def_CountPlayers &&
                 mods[curMode].countBots == LocalDB._def_CountBots &&
-                    ( !mods[curMode].gameInternet && LocalDB._def_ModeGame==0 ||
-                      mods[curMode].gameInternet && LocalDB._def_ModeGame==1 )
+                mods[curMode].countInterPlayers == LocalDB._def_CountInterPlayers
             )
                 break;
 
@@ -94,20 +93,23 @@ public class MainMenu : MonoBehaviour {
 
 
 
-    public void UpdateFieldCountPlayers()
+    private void UpdateFieldCountPlayers()
     {
         fieldCountPlayers.text = LocalDB._def_CountPlayers.ToString();
     }
 
     public void UpdateFieldGexagonsOrientation()
     {
-        if( LocalDB._def_GexagonsOrientation == 1 )
-            fieldOrientation.transform.Rotate(Vector3.forward, 30);
+        if ( CheckClickInUI() )
+            return;
+
+        if ( LocalDB._def_GexagonsOrientation == 1 )
+            fieldOrientation.transform.rotation = Quaternion.Euler(0, 0, 30);
         else
-            fieldOrientation.transform.Rotate(Vector3.forward, 0f);
+            fieldOrientation.transform.rotation = Quaternion.Euler(0, 0, 0);
     }
 
-    public void UpdateFieldTextMod()
+    private void UpdateFieldTextMod()
     {
         fieldModeGame.text = mods[curMode].nameMode;
     }
@@ -129,7 +131,7 @@ public class MainMenu : MonoBehaviour {
 
     public void CountPlayersNext()
     {
-        LocalDB._def_CountPlayers = (LocalDB._def_CountPlayers + 1) % 3 + 1;
+        LocalDB._def_CountPlayers = (LocalDB._def_CountPlayers) % 3 + 1;
         ModeNext();
     }
 
@@ -137,7 +139,13 @@ public class MainMenu : MonoBehaviour {
 
 
 
-    
+
+    public void SwapOrientation()
+    {
+        LocalDB._def_GexagonsOrientation = (LocalDB._def_GexagonsOrientation == 1) ? 0 : 1;
+        UpdateFieldGexagonsOrientation();
+    }
+
     private void CheckColorsValues()
     {
         // Для режима 2 игрока: если либо 1 либо у 2 игрока цвет зелёный - поменять на противоположный цвет  либо 1 игрока соответственно
@@ -162,12 +170,12 @@ public class MainMenu : MonoBehaviour {
     // Если у одного из игроков при переключении на режим 2 игрока остался зелёный префаб - заменить на противоположный другому игроку
     private void CheckColorsVisible()
     {
-        if ( LocalDB._def_CountPlayers==1 || LocalDB._def_CountBots==0 && LocalDB._def_ModeGame==0 )
+        if ( LocalDB._def_CountPlayers==1 || LocalDB._def_CountBots==0 && LocalDB._def_CountInterPlayers==0 )
         {// режим игры на телефоне без ботов, 1 игрок
             outImage1.transform.parent.gameObject.SetActive(false);
             outImage2.transform.parent.gameObject.SetActive(false);
         }
-        else if ( LocalDB._def_ModeGame==1 || LocalDB._def_CountPlayers==2 && LocalDB._def_CountBots==0 )
+        else if ( LocalDB._def_CountInterPlayers>0 || LocalDB._def_CountPlayers==2 && LocalDB._def_CountBots==0 )
         {// мультиплеер, 2 игрока, 1 из них - бот
             outImage1.transform.parent.gameObject.SetActive(true);
             outImage2.transform.parent.gameObject.SetActive(false);
@@ -219,7 +227,15 @@ public class MainMenu : MonoBehaviour {
 
 
 
-
+    public bool CheckClickInUI()
+    {
+        PointerEventData ped = new PointerEventData(null);
+        ped.position = Input.mousePosition;
+        List<RaycastResult> results = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(ped, results);
+        
+        return results.Count > 4;
+    }
 
 
 

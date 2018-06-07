@@ -23,9 +23,12 @@ namespace MainInGame
         public GameObject transparentWall;
         public bool transparentWallOpened;
 
-        // основное игровое меню
+        // основное меню
         public GameObject gameMenu;
         public bool gameMenuOpened;
+
+        // 0:здоровье синего   1:здоровье крассного   2:здоровье зелёного
+        public List<Text> HillsPlayersSceneValues;
 
         // ориентация камеры. 0-горизонтальная 1-вертикальная
         public int orientation;
@@ -37,6 +40,9 @@ namespace MainInGame
         {
             Camera camera = gameObject.GetComponent<Camera>();
             camera.ResetAspect();
+
+            for(int i=0; i<LocalDB._def_CountPlayers; i++)
+                HillsPlayersSceneValues[i].gameObject.SetActive(true);
 
             orientation = LocalDB._def_GexagonsOrientation;
             // если ориентация камеры вертикальная - поворачиваем камеру на 30 градусов
@@ -105,11 +111,32 @@ namespace MainInGame
 
 
 
+
+
         public void UpdateImgPlayerCurHit()
         {
             // 0:9 1:10 2:11
             imgPlayerCurHit.sprite = gm.grd.cellsPrefabs[gm.playerCurHit + 9];
         }
+
+
+
+
+        // получить таблицу с данными об игроках
+        public void GetTableParamsPlayers()
+        {
+
+        }
+
+        // у игрока player обновить здоровье
+        public void PlayerUpdateHills( int player, int count )
+        {
+            HillsPlayersSceneValues[player].text = count.ToString();
+        }
+
+
+
+
 
 
         // при клике по элементам над TransparentWall слика по TransparentWall не происходит

@@ -52,7 +52,7 @@ namespace MainInGame
                 for (short i=0; i < maxCheckedLine; i++)
                 {
                     OneHit curPointOH = gm.grd.FindPoint(curPoint);
-                    BoCoCell curPointBK = curPointOH.bcc;
+                    BoCoCell curPointBK = null;// curPointOH.bcc;
                     curPointBK.CheckInitialize();
 
                     if( curPointBK.WhoLeaderInSubLine(subLineRever) != start.state )
