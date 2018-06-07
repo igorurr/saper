@@ -99,13 +99,13 @@ namespace MainInGame
         {
             // если ячейки не существует, если она уже открыта или если закрыта
             // если точка была помечена как бомба - убираем пометку
-            if (p == null || p.damageHill==2 || p.state==2 || p.state==0 || p.playerMarkBomb==1 )
+            if (p == null || p.damageHill==2 || p.state!=1 || p.playerMarkBomb==1 )
                 return 0;
 
             p.SetState(2);
 
             // если вокруг есть бомбы обход в дальнейшие ячейки завершаем
-            if( p.PointVisible() )
+            if( p.MakePointVisible() )
                 return 1;
 
             int ret = 0;

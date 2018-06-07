@@ -34,11 +34,16 @@ namespace MainInGame
         // стартовое количество здоровья
         public int startHill;
 
+        // умерли все
+        public bool gameOver;
+
 
 
         // Use this for initialization
         void Start ()
         {
+            gameOver = false;
+
             OneHit.gm = this;
             Player.gm = this;
 
@@ -188,9 +193,9 @@ namespace MainInGame
         public void UpdateAllAfterHit( OneHit p )
         {
             // меняем позицию игрока
+            p.SetState( players[playerCurHit].p.state );
             players[playerCurHit].p.SetState(2);
             players[playerCurHit].p = p;
-            players[playerCurHit].p.SetState(playerCurHit+3);
 
 
             for (int i=0; i<countPlayers; i++)
@@ -201,8 +206,19 @@ namespace MainInGame
             }
 
             // Определяем кто ходит
-            // playerCurHit:playerCurHit   0:1 1:2 2:0    или 0:1 1:0
-            playerCurHit = (playerCurHit+1) % countPlayers;
+            int pch = playerCurHit; //игрок который только что ходил
+            do {
+                // playerCurHit:playerCurHit   0:1 1:2 2:0    или 0:1 1:0
+                playerCurHit = (playerCurHit + 1) % countPlayers;
+            }
+            // пропускаем всех мёртвых игроков, они больше не ходят
+            while ( playerCurHit!=pch && players[playerCurHit].playerDead );
+
+            if( playerCurHit==pch && players[playerCurHit].playerDead)
+            {// все умерли - конец игры
+                gameOver = true;
+                return;
+            }
 
             // в камере меняем иконку игрока который ходит
             cam.UpdateImgPlayerCurHit();
@@ -210,7 +226,7 @@ namespace MainInGame
 
         public virtual bool MakeHit(OneHit point, int player)
         {
-            return grd.MakeHit( point, player );
+            return (gameOver) ? false : grd.MakeHit( point, player );
         }
 
 

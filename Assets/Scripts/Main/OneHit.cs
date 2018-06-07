@@ -54,7 +54,7 @@ namespace MainInGame
 
         public void SetStateDead()
         {
-            GetComponent<SpriteRenderer>().sprite = grd.cellsPrefabs[state+3];
+            SetState(state+3);
         }
 
 
@@ -94,7 +94,7 @@ namespace MainInGame
         }
 
         // возвращает булево значение - стоит ли перестать делать ячейки вокруг активными
-        public bool PointVisible()
+        public bool MakePointVisible()
         {
             SetState(2);
 

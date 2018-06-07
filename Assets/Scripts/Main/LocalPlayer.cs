@@ -54,12 +54,16 @@ namespace MainInGame
         {
             allDamage += count;
             gm.cam.PlayerUpdateHills( idUser, CurHills);
+
+            CheckDeath();
         }
 
         public void DeviDamage( float coef )
         {
             allDamage += (int)(CurHills*coef+0.5);
             gm.cam.PlayerUpdateHills( idUser, CurHills);
+
+            CheckDeath();
         }
 
         public void AddHill( int count )
