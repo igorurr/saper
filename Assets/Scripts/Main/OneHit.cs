@@ -23,7 +23,6 @@ namespace MainInGame
         // что находится в этой ячейке, бомба, если да то какая или аптечка.
         // 0-ничего  1-хилка  2-бомба  3-взятая хилка  4-взорваная бомба
         public int damageHill;
-        public int countBombs;
 
         // 0-никто не пометил 1-синий 2-красный 3-зелёный
         public int playerMarkBomb;
@@ -39,7 +38,6 @@ namespace MainInGame
             SetState(1);
 
             damageHill = 0;
-            countBombs = 0;
             playerMarkBomb = 0;
         }
 
@@ -67,53 +65,50 @@ namespace MainInGame
         {
             Color cl = GetPlayerColor(player);
 
-            // если в ячейке бомба - рисуем бомбу
+            int oldDamageHill = damageHill;
+
+            GameObject goBombHill = GetBombMarkHillObject();
+            Image goiBombHill = goBombHill.GetComponent<Image>();
+
+            // если в ячейке невзорваная бомба - взрываем и рисуем бомбу
             if (damageHill == 2)
             {
-                // префаб бомбы на сцене
-                GameObject goBomb = GetBombObject();
+                goiBombHill.sprite = grd.cellTypesPrefabs[0];
+                damageHill = 4;
 
-                goBomb.GetComponent<Image>().color = cl;
-                goBomb.SetActive(true);
+                // префаб таблетки/бомбы на сцене
+                goBombHill.GetComponent<Image>().color = cl;
+                goBombHill.SetActive(true);
             }
-
-            // если в ячейке таблетка - рисуем её
+            // если в ячейке невзятая таблетка - поднимаем и рисуем её
             else if (damageHill == 1)
             {
-                // префаб таблетки на сцене
-                GameObject goHill = GetHillObject();
+                goiBombHill.sprite = grd.cellTypesPrefabs[1];
+                damageHill = 3;
 
-                goHill.GetComponent<Image>().color = cl;
-                goHill.SetActive(true);
+                // префаб таблетки/бомбы на сцене
+                goBombHill.GetComponent<Image>().color = cl;
+                goBombHill.SetActive(true);
             }
-
-            int oldDamageHill = damageHill;
-            damageHill = 0;
 
             return oldDamageHill;
         }
 
-        // возвращает булево значение - стоит ли перестать делать ячейки вокруг активными
-        public bool MakePointVisible()
+        public void CheckHill()
         {
-            SetState(2);
-
-            // если здесь есть таблетка - сигнализируем
             if ( damageHill == 1 )
             {
-                GameObject goHill = GetHillObject();
-                
-                goHill.SetActive(true);
-            }
+                GameObject goBombHill = GetBombMarkHillObject();
+                Image goiBombHill = goBombHill.GetComponent<Image>();
 
-            // если вокруг есть бомбы рисуем в ячейке текст
-            if ( countBombs > 0 )
-            {
-                GetCountBombsText().text = countBombs.ToString();
-                return true;
+                goiBombHill.sprite = grd.cellTypesPrefabs[1];
+                goBombHill.SetActive(true);
             }
+        }
 
-            return false;
+        public void DrawAroundBombs( int count )
+        {
+            GetCountBombsObject().GetComponent<Text>().text = count.ToString();
         }
 
 
@@ -124,14 +119,6 @@ namespace MainInGame
         public void CreateBomb()
         {
             damageHill = 2;
-            countBombs = 0;
-        }
-
-        public void IncrementAroundBombs()
-        {
-            if ( damageHill == 2 )
-                return;
-            countBombs++;
         }
 
         public void CreateHill()
@@ -162,9 +149,12 @@ namespace MainInGame
 
             playerMarkBomb = gm.playerCurHit + 1;
 
-            GameObject go = GetBombObject();
-            go.GetComponent<Image>().color = GetPlayerColor(playerMarkBomb);
+            GameObject go = GetBombMarkHillObject();
             go.SetActive(true);
+            
+            Image goi = go.GetComponent<Image>();
+            goi.color = GetPlayerColor(playerMarkBomb);
+            goi.sprite = grd.cellTypesPrefabs[3];
 
             return true;
         }
@@ -172,7 +162,7 @@ namespace MainInGame
         public void UnMarkBomb()
         {
             playerMarkBomb = 0;
-            GetBombObject().SetActive(false);
+            GetBombMarkHillObject().SetActive(false);
         }
 
         private void OnLongPressMouse()
@@ -238,33 +228,21 @@ namespace MainInGame
 
 
         // Цвет текущего игрока
-        public Color GetPlayerColor(int p)
+        public static Color GetPlayerColor(int p)
         {
              return new Color( p==2?0.76f:0, p==3?0.6f:0, p==1?0.76f:0, 1);
         }
 
-        // канвас в котором бомбы текст и хилки
-        public Transform GetCanvas()
-        {
-            return transform.GetChild(0);
-        }
-
         // текст в ячейке куда пишется сколько там цифр
-        public Text GetCountBombsText()
+        public GameObject GetCountBombsObject()
         {
-            return transform.GetChild(0).GetChild(0).GetComponent<Text>();
+            return transform.GetChild(0).gameObject;
         }
 
         // картинка бомбы в данной ячейке
-        public GameObject GetBombObject()
+        public GameObject GetBombMarkHillObject()
         {
-            return transform.GetChild(0).GetChild(1).gameObject;
-        }
-        
-        // картинка таблетки в данной ячейке
-        public GameObject GetHillObject()
-        {
-            return transform.GetChild(0).GetChild(2).gameObject;
+            return transform.GetChild(1).gameObject;
         }
     }
 };

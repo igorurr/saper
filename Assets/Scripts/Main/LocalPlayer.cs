@@ -33,13 +33,13 @@ namespace MainInGame
 
 
 
+
         public Player(int idUser)
         {
             this.idUser = idUser;
 
             allDamage = 0;
             allHills = gm.startHill;
-            gm.cam.PlayerUpdateHills( idUser, allHills );
 
             countOpenCells = 0;
             countWayCells = 0;
@@ -53,15 +53,19 @@ namespace MainInGame
         public void SubDamage( int count )
         {
             allDamage += count;
-            gm.cam.PlayerUpdateHills( idUser, CurHills);
+
+            gm.cam.GetTableParamsPlayers( idUser, true, "+"+count.ToString() );
+            gm.cam.PlayerUpdateHills( idUser );
 
             CheckDeath();
         }
 
         public void DeviDamage( float coef )
         {
-            allDamage += (int)(CurHills*coef+0.5);
-            gm.cam.PlayerUpdateHills( idUser, CurHills);
+            allDamage += (int)(CurHills*coef+1);
+
+            gm.cam.GetTableParamsPlayers( idUser, true, "X"+coef.ToString() );
+            gm.cam.PlayerUpdateHills( idUser );
 
             CheckDeath();
         }
@@ -69,14 +73,19 @@ namespace MainInGame
         public void AddHill( int count )
         {
             allHills += count;
-            gm.cam.PlayerUpdateHills( idUser, CurHills);
+
+            gm.cam.GetTableParamsPlayers( idUser, false, "+"+count.ToString() );
+            gm.cam.PlayerUpdateDamage( idUser );
         }
 
         public void MultHill( float coef )
         {
-            allHills += (int)(CurHills*coef+0.5);
-            gm.cam.PlayerUpdateHills( idUser, CurHills);
+            allHills += (int)(CurHills*coef+1);
+
+            gm.cam.GetTableParamsPlayers( idUser, false, "X"+coef.ToString() );
+            gm.cam.PlayerUpdateDamage( idUser );
         }
+
 
 
 

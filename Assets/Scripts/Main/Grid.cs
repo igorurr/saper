@@ -32,7 +32,10 @@ namespace MainInGame
             int orientation = LocalDB._def_GexagonsOrientation;
             // если ориентация камеры вертикальная - поворачиваем текст в ячейке на 30 градусов
             if (orientation == 1)
-                mainCell.GetComponent<OneHit>().GetCanvas().Rotate(Vector3.forward, 30);
+            {
+                mainCell.GetComponent<OneHit>().GetCountBombsObject().transform.Rotate(Vector3.forward, 30);
+                mainCell.GetComponent<OneHit>().GetBombMarkHillObject().transform.Rotate(Vector3.forward, 30);
+            }
 
             OneHit.grd = this;
             BoCoCell.grd = this;
@@ -72,9 +75,12 @@ namespace MainInGame
             if ( point.state==1 )
             {
                 int i = 0;
-                for( ; i<6; i++ )
-                    if( FindPoint(point.coord.GetAround(i)).state > 1 )
+                for (; i < 6; i++)
+                {
+                    OneHit oh = FindPoint(point.coord.GetAround(i));
+                    if ( oh && oh.state>1 )
                         break;
+                }
                 if (i == 6)
                     return false;
             }
@@ -89,28 +95,57 @@ namespace MainInGame
             AddBlackField(point.coord);
 
             // открываем ячейки, добавляем их количество к текущему юзеру
-            gm.players[player-1].CountOpenCellsAdd( OpenField(point) ); 
+            gm.players[player-1].CountOpenCellsAdd( OpenField(point, res!=2) ); 
 
             return true;
         }
 
         // открывает поле при клике в данную точку
-        public int OpenField(OneHit p)
+        public int OpenField(OneHit p, bool needCountAroundBombs=true)
         {
+            /*for (int i = 0; i < 6; i++)
+                if ( FindPoint( p.coord.GetAround(i) ).damageHill==2 )
+                    FindPoint( p.coord.GetAround(i) ).GetBombObject().SetActive(true);*/
+
             // если ячейки не существует, если она уже открыта или если закрыта
             // если точка была помечена как бомба - убираем пометку
             if (p == null || p.damageHill==2 || p.state!=1 || p.playerMarkBomb==1 )
                 return 0;
+            
+            for (int i = 0; i < 6; i++)
+            {
+                // Вокруг отустствуeт одна или более точек - текущую не показываем
+                if ( !FindPoint(p.coord.GetAround(i)) )
+                    return 0;
+            }
 
             p.SetState(2);
 
-            // если вокруг есть бомбы обход в дальнейшие ячейки завершаем
-            if( p.MakePointVisible() )
-                return 1;
+            // Сколько бомб вокруг точки
+            int countBombs = 0;
+            for (int i = 0; i < 6; i++)
+            {
+                OneHit oh = FindPoint(p.coord.GetAround(i));
+                if (oh.damageHill == 2 || oh.damageHill == 4)
+                    countBombs++;
+            }
+            
+            // если вокруг есть таблетки - показываем их
+            p.CheckHill();
 
+            // показываем сколько вокруг бомб
+            if ( countBombs>0 && p.damageHill!=4 )
+            {
+                p.DrawAroundBombs(countBombs);
+                return 1;
+            }
+
+            // считаем количество открытых точек
             int ret = 0;
             for (int i = 0; i < 6; i++)
-                ret += OpenField( FindPoint( p.coord.GetAround(i) ) );
+            {
+                ret += OpenField( FindPoint(p.coord.GetAround(i)) );
+            }
 
             return ret;
         }
@@ -174,14 +209,6 @@ namespace MainInGame
                 if (rnd < gm.likenessBomb[0])
                 {   // выпала бомба
                     oh.CreateBomb();
-
-                    for (int j = 0; j < 6; j++)
-                    {
-                        OneHit coh = FindPoint(oh.coord.GetAround(j));
-                        if (coh != null)
-                            coh.IncrementAroundBombs();
-                    }
-
                     continue;
                 }
 

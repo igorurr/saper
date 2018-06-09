@@ -90,6 +90,7 @@ namespace MainInGame
                 for (int i = 0; i<CountRealPlayers; i++)
                 {
                     players[i] = new Player(i);
+                    cam.PlayerUpdateHills( i );
                 }
             }
 
@@ -217,6 +218,7 @@ namespace MainInGame
             if( playerCurHit==pch && players[playerCurHit].playerDead)
             {// все умерли - конец игры
                 gameOver = true;
+                cam.GameOverDeclare(pch);
                 return;
             }
 

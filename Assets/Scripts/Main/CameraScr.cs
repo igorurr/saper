@@ -27,8 +27,19 @@ namespace MainInGame
         public GameObject gameMenu;
         public bool gameMenuOpened;
 
-        // 0:здоровье синего   1:здоровье крассного   2:здоровье зелёного
-        public List<Text> HillsPlayersSceneValues;
+        // 0:синего   1:крассного   2:зелёного
+        public List<Text> allHillsPlayersMenuValues;
+        public List<Text> allDamagePlayersMenuValues;
+        public List<Text> curHillsPlayersMenuValues;
+        public List<Text> curHillsPlayersSceneValues;
+
+        public Text lastHillDamageTxt;
+        public GameObject lastDamageImg;
+        public GameObject lastHillImg;
+
+        public GameObject menuObject;
+        public Image winMenuWinPlayer;
+        public GameObject winMenuLineObject;
 
         // ориентация камеры. 0-горизонтальная 1-вертикальная
         public int orientation;
@@ -42,7 +53,7 @@ namespace MainInGame
             camera.ResetAspect();
 
             for(int i=0; i<LocalDB._def_CountPlayers; i++)
-                HillsPlayersSceneValues[i].gameObject.SetActive(true);
+                curHillsPlayersSceneValues[i].gameObject.SetActive(true);
 
             orientation = LocalDB._def_GexagonsOrientation;
             // если ориентация камеры вертикальная - поворачиваем камеру на 30 градусов
@@ -122,16 +133,42 @@ namespace MainInGame
 
 
 
-        // получить таблицу с данными об игроках
-        public void GetTableParamsPlayers()
+        // Обновить последнюю хилку/урон полученный игроком
+        public void GetTableParamsPlayers( int player, bool isBomb, string txt )
         {
+            lastHillDamageTxt.text = txt;
 
+            GameObject imgBombHill = isBomb ? lastDamageImg : lastHillImg;
+            if( isBomb )
+            {
+                imgBombHill = lastDamageImg;
+                lastDamageImg.SetActive(true);
+                lastHillImg.SetActive(false);
+            }
+            else
+            {
+                imgBombHill = lastDamageImg;
+                lastHillImg.SetActive(true);
+                lastDamageImg.SetActive(false);
+            }
+
+            imgBombHill.GetComponent<Image>().color = OneHit.GetPlayerColor( player );
+            lastHillDamageTxt.color = OneHit.GetPlayerColor( player );
         }
 
         // у игрока player обновить здоровье
-        public void PlayerUpdateHills( int player, int count )
+        public void PlayerUpdateHills( int player )
         {
-            HillsPlayersSceneValues[player].text = count.ToString();
+            allHillsPlayersMenuValues[player].text = gm.players[player].allHills.ToString();
+            curHillsPlayersMenuValues[player].text = gm.players[player].CurHills.ToString();
+            curHillsPlayersSceneValues[player].text = gm.players[player].CurHills.ToString();
+        }
+        // у игрока player обновить урон
+        public void PlayerUpdateDamage(int player)
+        {
+            allDamagePlayersMenuValues[player].text = gm.players[player].allDamage.ToString();
+            curHillsPlayersMenuValues[player].text = gm.players[player].CurHills.ToString();
+            curHillsPlayersSceneValues[player].text = gm.players[player].CurHills.ToString();
         }
 
 
@@ -178,6 +215,18 @@ namespace MainInGame
         {
             transparentWallOpened = false;
             transparentWall.SetActive(false);
+        }
+
+
+
+        // из обычного игрового меню сделать победное
+        public void GameOverDeclare( int winPlayer )
+        {
+            // 0:9 1:10 2:11
+            winMenuWinPlayer.sprite = gm.grd.cellsPrefabs[winPlayer+9];
+
+            menuObject.SetActive(true);
+            winMenuLineObject.SetActive(true);
         }
 
 
